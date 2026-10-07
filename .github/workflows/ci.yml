@@ -4,30 +4,34 @@ on:
   pull_request:
     branches:
       - "main"
+  pull_request_target:
+    types: [labeled, reopened]
+    branches:
+      - "main"
   workflow_dispatch:
-    
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   Spec:
+    if: github.event_name != 'pull_request_target'
     uses: "puppetlabs/cat-github-actions/.github/workflows/module_ci.yml@main"
-    with:
-      # puppet_litmus -> bolt 4.x -> faraday-patron -> patron builds a libcurl native extension;
-      # the runner has no libcurl headers, so install them before bundle (Puppet 9 lane, Ruby 4).
-      additional_packages: "libcurl4-openssl-dev"
-      ruby_version: "3.2"
     secrets: "inherit"
 
   Acceptance:
-    needs: Spec
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.head.repo.fork == false) ||
+      (github.event_name == 'pull_request_target' &&
+       github.event.pull_request.head.repo.fork == true &&
+       contains(github.event.pull_request.labels.*.name, 'allowed-for-ci'))
     uses: "puppetlabs/cat-github-actions/.github/workflows/module_acceptance.yml@main"
     with:
-      ruby_version: "3.2"
-      flags: >-
-        --nightly
-        --arch-exclude arm
-        --collection-platform-exclude 9:redhat-7
-        --collection-platform-exclude 9:centos-7
-        --collection-platform-exclude 9:oraclelinux-7
-        --collection-platform-exclude 9:debian-10
-        --collection-platform-exclude 9:ubuntu-18.04
-        --collection-platform-exclude 9:ubuntu-20.04
+      flags: "--nightly"
     secrets: "inherit"
