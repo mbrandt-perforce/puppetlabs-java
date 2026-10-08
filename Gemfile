@@ -97,6 +97,7 @@ group :system_tests do
   gem "faraday", '~> 2.5',         require: false
   gem "CFPropertyList", '< 3.0.7', require: false if RUBY_PLATFORM.include?('darwin')
   gem "serverspec", '~> 2.41',     require: false
+  gem "syslog"
 end
 
 gems = {}

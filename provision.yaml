@@ -1,8 +1,12 @@
 ---
 default:
   provisioner: docker
+  docker_options:
+    # Allocate 2GB for /tmp to support OpenJDK downloads (~350MB each)
+    tmpfs:
+      - /tmp:size=2g,noexec,nosuid,nodev
   images:
-  - litmusimage/debian:8
+    - litmusimage/ubuntu:26.04
 vagrant:
   provisioner: vagrant
   images:
