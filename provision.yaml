@@ -7,6 +7,29 @@ default:
       - /tmp:size=2g,noexec,nosuid,nodev
   images:
     - litmusimage/ubuntu:26.04
+  docker_latest:
+    provisioner: docker
+    docker_options:
+      # Allocate 2GB for /tmp to support OpenJDK downloads (~350MB each)
+      tmpfs:
+        - /tmp:size=2g,noexec,nosuid,nodev
+    images:
+      - litmusimage/ubuntu:22.04
+      - litmusimage/ubuntu:24.04
+      - litmusimage/debian:11
+      - litmusimage/debian:12
+      - litmusimage/debian:13
+  docker_rhel_latest:
+    provisioner: docker
+    docker_options:
+      # Allocate 2GB for /tmp to support OpenJDK downloads (~350MB each)
+      tmpfs:
+        - /tmp:size=2g,noexec,nosuid,nodev
+    images:
+      - litmusimage/redhat:9
+      - litmusimage/centos:9
+      - litmusimage/almalinux:8
+      - litmusimage/rocky:8
 vagrant:
   provisioner: vagrant
   images:
