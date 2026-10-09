@@ -140,6 +140,20 @@ install_adopt_jdk_jre = <<MANIFEST
   }
 MANIFEST
 
+install_adopt_advanced = <<MANIFEST
+  java::adopt { 'test_adopt_jdk_version12_custom':
+    version        => '12',
+    version_major  => '12.0.1',
+    version_minor  => '12',
+    java           => 'jdk',
+    url            => 'https://github.com/AdoptOpenJDK/openjdk12-binaries/releases/download/jdk-12.0.1%2B12/OpenJDK12U-jdk_x64_linux_hotspot_12.0.1_12.tar.gz',
+    basedir        => '/opt/java-acceptance-adopt',
+    manage_basedir => true,
+    manage_symlink => true,
+    symlink_name   => 'java_home',
+  }
+MANIFEST
+
 # Adoptium
 
 adoptium_enabled = true unless os[:family].casecmp('SLES').zero?
@@ -158,6 +172,20 @@ install_adoptium_jdk = <<MANIFEST
       version_minor => '0',
       version_patch => '1',
       version_build => '12',
+  }
+MANIFEST
+
+install_adoptium_advanced = <<MANIFEST
+  java::adoptium { 'test_adoptium_jdk_version21_custom':
+    version_major  => '21',
+    version_minor  => '0',
+    version_patch  => '2',
+    version_build  => '13',
+    url            => 'https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.2%2B13/OpenJDK21U-jdk_x64_linux_hotspot_21.0.2_13.tar.gz',
+    basedir        => '/opt/java-acceptance-adoptium',
+    manage_basedir => true,
+    manage_symlink => true,
+    symlink_name   => 'java_home',
   }
 MANIFEST
 
@@ -291,6 +319,14 @@ describe 'installing' do
     it 'installs adopt jdk and jre' do
       idempotent_apply(install_adopt_jdk_jre)
     end
+
+    it 'supports a custom URL, basedir, and managed symlink' do
+      idempotent_apply(install_adopt_advanced)
+      result = shell('test -L /opt/java-acceptance-adopt/java_home')
+      expect(result.exit_code).to eq(0)
+      result = shell('readlink -f /opt/java-acceptance-adopt/java_home')
+      expect(result.stdout.strip).to eq('/opt/java-acceptance-adopt/jdk-12.0.1+12')
+    end
   end
 
   context 'when java::adoptium', if: adoptium_enabled, unless: UNSUPPORTED_PLATFORMS.include?(os[:family]) do
@@ -305,14 +341,22 @@ describe 'installing' do
     it 'installs adopt jdk and jre' do
       idempotent_apply(install_adoptium_jdk)
     end
+
+    it 'supports a custom URL, basedir, and managed symlink' do
+      idempotent_apply(install_adoptium_advanced)
+      result = shell('test -L /opt/java-acceptance-adoptium/java_home')
+      expect(result.exit_code).to eq(0)
+      result = shell('readlink -f /opt/java-acceptance-adoptium/java_home')
+      expect(result.stdout.strip).to eq('/opt/java-acceptance-adoptium/jdk-21.0.2+13')
+    end
   end
 
-  context 'when java::sap', if: sap_enabled && ['Sles'].include?(os[:family]), unless: UNSUPPORTED_PLATFORMS.include?(os[:family]) do
+  context 'when java::sap', if: sap_enabled && (os[:family].casecmp('Sles').zero? || os[:family].casecmp('RedHat').zero?), unless: UNSUPPORTED_PLATFORMS.include?(os[:family]) do
     let(:install_path) do
       (os[:family] == 'redhat') ? '/usr/java' : '/usr/lib/jvm'
     end
 
-    it 'installs adopt jdk and jre' do
+    it 'installs SAP Java on SLES and RedHat-family hosts' do
       idempotent_apply(install_sap_jdk_jre)
     end
   end

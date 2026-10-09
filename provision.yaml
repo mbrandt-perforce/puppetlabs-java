@@ -30,6 +30,7 @@ docker_rhel_latest:
     - litmusimage/centos:stream9
     - litmusimage/almalinux:8
     - litmusimage/rockylinux:8
+    - litmusimage/oraclelinux:8
 vagrant:
   provisioner: vagrant
   images:
