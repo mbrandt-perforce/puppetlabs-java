@@ -108,6 +108,12 @@ adopt_version8_build = '08'
 adopt_version9_major = '9'
 adopt_version9_full = '9.0.4'
 adopt_version9_build = '11'
+adopt_proxy_parameters = if ENV['JAVA_ACCEPTANCE_PROXY_SERVER']
+                           "proxy_server => '#{ENV.fetch('JAVA_ACCEPTANCE_PROXY_SERVER')}',\n    " \
+                             "proxy_type   => '#{ENV.fetch('JAVA_ACCEPTANCE_PROXY_TYPE', 'https')}',\n"
+                         else
+                           ''
+                         end
 
 install_adopt_jdk_jre = <<MANIFEST
   java::adopt {
@@ -141,6 +147,20 @@ install_adopt_jdk_jre = <<MANIFEST
 MANIFEST
 
 install_adopt_advanced = <<MANIFEST
+  java::adopt { 'test_adopt_jdk_version10':
+    version        => '10',
+    java           => 'jdk',
+    basedir        => '/opt/java-acceptance-adopt',
+    manage_basedir => true,
+    #{adopt_proxy_parameters}
+  }
+  java::adopt { 'test_adopt_jdk_version11':
+    version        => '11',
+    java           => 'jdk',
+    basedir        => '/opt/java-acceptance-adopt',
+    manage_basedir => true,
+    #{adopt_proxy_parameters}
+  }
   java::adopt { 'test_adopt_jdk_version12_custom':
     version        => '12',
     version_major  => '12.0.1',
@@ -151,12 +171,19 @@ install_adopt_advanced = <<MANIFEST
     manage_basedir => true,
     manage_symlink => true,
     symlink_name   => 'java_home',
+    #{adopt_proxy_parameters}
   }
 MANIFEST
 
 # Adoptium
 
 adoptium_enabled = true unless os[:family].casecmp('SLES').zero?
+adoptium_proxy_parameters = if ENV['JAVA_ACCEPTANCE_PROXY_SERVER']
+                              "proxy_server => '#{ENV.fetch('JAVA_ACCEPTANCE_PROXY_SERVER')}',\n    " \
+                                "proxy_type   => '#{ENV.fetch('JAVA_ACCEPTANCE_PROXY_TYPE', 'https')}',\n"
+                            else
+                              ''
+                            end
 
 install_adoptium_jdk = <<MANIFEST
   java::adoptium {
@@ -186,6 +213,7 @@ install_adoptium_advanced = <<MANIFEST
     manage_basedir => true,
     manage_symlink => true,
     symlink_name   => 'java_home',
+    #{adoptium_proxy_parameters}
   }
 MANIFEST
 
@@ -351,13 +379,33 @@ describe 'installing' do
     end
   end
 
-  context 'when java::sap', if: sap_enabled && (os[:family].casecmp('Sles').zero? || os[:family].casecmp('RedHat').zero?), unless: UNSUPPORTED_PLATFORMS.include?(os[:family]) do
+  context 'when java::sap', if: sap_enabled && os[:family].casecmp('Sles').zero?, unless: UNSUPPORTED_PLATFORMS.include?(os[:family]) do
     let(:install_path) do
       (os[:family] == 'redhat') ? '/usr/java' : '/usr/lib/jvm'
     end
 
-    it 'installs SAP Java on SLES and RedHat-family hosts' do
+    it 'installs SAP Java on SLES hosts' do
       idempotent_apply(install_sap_jdk_jre)
+    end
+  end
+
+  context 'when java::sap on RedHat-family hosts', if: sap_enabled && os[:family].casecmp('RedHat').zero?, unless: UNSUPPORTED_PLATFORMS.include?(os[:family]) do
+    it 'installs the public SAPMachine 11 JDK archive' do
+      idempotent_apply(<<~MANIFEST)
+        java::sap { 'test_sapmachine_11':
+          version        => '11',
+          java           => 'jdk',
+          basedir        => '/opt/java-acceptance-sap',
+          manage_basedir => true,
+          manage_symlink => true,
+          symlink_name   => 'java_home',
+        }
+      MANIFEST
+
+      result = shell('test -d /opt/java-acceptance-sap/sapmachine-jdk-11.0.7')
+      expect(result.exit_code).to eq(0)
+      result = shell('readlink -f /opt/java-acceptance-sap/java_home')
+      expect(result.stdout.strip).to eq('/opt/java-acceptance-sap/sapmachine-jdk-11.0.7')
     end
   end
 end

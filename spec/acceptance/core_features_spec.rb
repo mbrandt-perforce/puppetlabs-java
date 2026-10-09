@@ -5,7 +5,9 @@ require 'spec_helper_acceptance'
 describe 'java class configuration' do
   context 'with a Debian-family host', if: os[:family].casecmp('Debian').zero? do
     let(:java_version) do
-      case os[:release][:major].to_s
+      release = os[:release]
+      release = release[:major] if release.is_a?(Hash)
+      case release.to_s
       when '13', '26.04' then '21'
       when '12', '24.04' then '17'
       else '11'

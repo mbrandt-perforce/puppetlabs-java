@@ -9,15 +9,12 @@ download_versions = {
   'JAVA_DOWNLOAD_RPMBIN_URL' => 'rpmbin',
 }
 
+# Set one of the package URL variables to enable its scenario. Optional
+# credential, JCE, and proxy variables allow protected downloads to be tested.
 describe 'java::download' do
   download_versions.each do |url_variable, package_type|
-    context "with #{package_type} package", if: ENV[url_variable] do
-      if package_type == 'tar.gz'
-        next unless os[:family].casecmp('Debian').zero?
-      else
-        next unless os[:family].casecmp('RedHat').zero?
-      end
-
+    package_platform = package_type == 'tar.gz' ? 'Debian' : 'RedHat'
+    context "with #{package_type} package", if: ENV[url_variable] && os[:family].casecmp(package_platform).zero? do
       it 'downloads, installs, and links Java with optional credentials, proxy, and JCE' do
         jce_url = ENV['JAVA_DOWNLOAD_JCE_URL']
         jce_parameters = if jce_url
@@ -30,6 +27,14 @@ describe 'java::download' do
                          else
                            ''
                          end
+        credential_parameters = if ENV['JAVA_DOWNLOAD_USERNAME'] || ENV['JAVA_DOWNLOAD_PASSWORD']
+                                  <<~PARAMETERS
+                                    username => '#{ENV.fetch('JAVA_DOWNLOAD_USERNAME', '')}',
+                                    password => '#{ENV.fetch('JAVA_DOWNLOAD_PASSWORD', '')}',
+                                  PARAMETERS
+                                else
+                                  ''
+                                end
         proxy_parameters = if ENV['JAVA_DOWNLOAD_PROXY_SERVER']
                              <<~PARAMETERS
                                proxy_server => '#{ENV.fetch('JAVA_DOWNLOAD_PROXY_SERVER')}',
@@ -45,14 +50,13 @@ describe 'java::download' do
             version_minor  => 'b09',
             java_se        => 'jdk',
             url            => '#{ENV.fetch(url_variable)}',
-            username       => '#{ENV.fetch('JAVA_DOWNLOAD_USERNAME', '')}',
-            password       => '#{ENV.fetch('JAVA_DOWNLOAD_PASSWORD', '')}',
             package_type   => '#{package_type}',
             basedir        => '#{download_dir}',
             manage_basedir => true,
             manage_symlink => true,
             symlink_name   => 'java_home',
             #{proxy_parameters}
+            #{credential_parameters}
             #{jce_parameters}
           }
         MANIFEST
